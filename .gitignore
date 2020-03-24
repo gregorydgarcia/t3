@@ -1,3 +1,9 @@
+# OSX
+.DS_Store
+
+# t3 Specific
+tmp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
