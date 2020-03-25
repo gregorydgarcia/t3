@@ -7,75 +7,102 @@
 [ ] Add storage option (.json)
 [ ] store active record as it's made
 [ ] hook up fixtures
+[ ] Add python2 support
 '''
 
 import json
 import datetime
 import csv
 
-def start_up():
-	records = {}
-	today = str(datetime.date.today())		
-	if today not in records.keys():
-		records[today] = []		
-	record_manager(records)
+def start_up():	
+	with open('records.json', 'r') as json_file:
+		data = json.load(json_file)
+		data["today"] = str(datetime.date.today())	
+		if data["today"] not in data['records'].keys():
+			data['records'][data["today"]] = []
+		
+	with open('records.json', 'w') as json_file:		
+		json.dump(data, json_file)
 
-def record_manager(records): 
-	command = ''
-	active_record = ''
+
+	input_manager(data)	
+
+
+
+
+def input_manager(data):
+	command = input(': ') 
 	while command != 'done':
-		if active_record == '':
-			command = input(': ')
-			active_record = make_record(command)
-
+		if command == 'stop':
+			save_record(data)
+			print('time is not being tracked')	
+		elif command == 'output':
+			save_record(data)
+			package_results()
+			print('time is not being tracked')
+			input_manager(data)
 		else:
-			command = input(': ')
-			save_record(active_record, records)					
-			active_record = make_record(command)			
-		
-	package_results(records)
-		
+			save_record(data)
+			start_record(command, data)
+		command = input(': ') 
 
-def make_record(command):
-	results_array = command.split(',')
-	client = results_array[0]
+	save_record(data)
+	print('closing t3')
+	return 
+
+def save_record(data):
+	r = data['active_record']
+	
+	if len(r) != 0: 
+		start = datetime.datetime.strptime(r[2], "%Y-%m-%d %H:%M:%S.%f")
+		end = datetime.datetime.now()	
+		minutes = round((end - start).seconds / 60)		
+
+		data['records'][data['today']].append([r[0], r[1], minutes])
+		data['active_record'] = []
+	
+		with open('records.json', 'w') as json_file:		
+			json.dump(data, json_file)
+
+def start_record(command, data): 
+	command_arr = command.split(',')		
+	client = command_arr[0]
 	comment = ''
-	if len(results_array) == 2:		
-		comment = results_array[1].strip()				
-	start_time = datetime.datetime.now()
-	return [client, comment, start_time]
+	if len(command_arr) == 2:		
+		comment = command_arr[1]		
+	start_time = str(datetime.datetime.now())
 
-def save_record(record, records):
-	start = record[2]
-	end = datetime.datetime.now()	
-	length = end - start
-	minutes = round(length.seconds / 60)
-	today = str(datetime.date.today())	
-	records[today].append([record[0], record[1], minutes])
+	data['active_record'] = [client, comment, start_time]
 
-def package_results(records):
-	today = str(datetime.date.today())	
-	todays_records = records[today]
-	record_grouping = {}
-	for record in todays_records:
-		client = record[0]
-		length = record[2]
-		comment_row = record[1] + ' (' + str(length) + ')'
-		if client in record_grouping.keys():
-			total_length = record_grouping[client][0]
-			total_comments = record_grouping[client][1]			
-			total_length = total_length + length
-			total_comments = total_comments + ' ' + comment_row
-			record_grouping[client] = [total_length, total_comments]
-		else:
-			record_grouping[client] = [length, comment_row]	
+	with open('records.json', 'w') as json_file:		
+			json.dump(data, json_file)
 
-	time = str(datetime.datetime.now())
-	filename = 'timesheets/timesheet_' + time + '.csv'
-	with open(filename, 'w') as f:
-		headers = 'total tracked time (in minutes),client,comments (invidual events time)\n'
-		f.write(headers)
-		for key in record_grouping.keys():
-			f.write(str(record_grouping[key][0]) + ',' + key + "," + record_grouping[key][1] + '\n')
-	print('Timesheet Saved at timesheets/' + filename)
+def package_results():
+	with open('records.json', 'r') as json_file:
+		data = json.load(json_file)
+		today = data['today']
+		todays_records = data['records'][today]
+		record_grouping = {}
+		for record in todays_records:
+			client = record[0]
+			length = record[2]
+			comment_row = record[1] + ' (' + str(length) + ')'
+			if client in record_grouping.keys():
+				total_length = record_grouping[client][0]
+				total_comments = record_grouping[client][1]			
+				total_length = total_length + length
+				total_comments = total_comments + ' ' + comment_row
+				record_grouping[client] = [total_length, total_comments]
+			else:
+				record_grouping[client] = [length, comment_row]	
+
+		time = str(datetime.datetime.now())
+		filename = 'timesheets/timesheet_' + time + '.csv'
+		with open(filename, 'w') as f:
+			headers = 'total tracked time (in minutes),client,comments (invidual events time)\n'
+			f.write(headers)
+			for key in record_grouping.keys():
+				f.write(str(record_grouping[key][0]) + ',' + key + "," + record_grouping[key][1] + '\n')
+		print('timesheet saved at timesheets/' + filename)
+
 start_up()

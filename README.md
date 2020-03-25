@@ -13,10 +13,8 @@ My goal is to make everything about this as simple and compact as possible (incl
 | ------------- |:-------------:| -----:|
 | 78 | Big Brand LLC | - new purchase order (23) - marketing plan (10) - call with client (23)
 
-
-### Features
 - 100% Terminal Based
-- Python 2/3 compatible
+- Written in Python3
  
 ### SetUp
 1. Download Repo
