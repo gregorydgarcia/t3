@@ -26,6 +26,6 @@ My goal is to make everything about this as simple and compact as possible (incl
 - `<client name>, <comment>` - start new time record
 - `pause` - continue to run but do not track time
 - `output` - generate timesheet for the day
-- `stop` - turn off t3
+- `done` - turn off t3
 
 
