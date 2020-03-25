@@ -1,18 +1,19 @@
-''' ToDos
-[ ] Add in storage
-[ ] Move router to switch case format
-[ ] Add check in router if command not in correct format
-[ ] Move input array into single line
-[ ] handle records over the next date
-[ ] Add storage option (.json)
-[ ] store active record as it's made
-[ ] hook up fixtures
-[ ] Add python2 support
-'''
+GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1LKX_c0fnDTJo9VFYFXkxRHa_W52uarDaUQhjcHJBO7g'
 
 import json
 import datetime
 import csv
+import pygsheets
+
+gc = pygsheets.authorize(service_file='creds/creds.json')
+sh = gc.open_by_url(GOOGLE_SHEET_URL)
+summary_record = sh[0]
+full_records = sh[1]
+
+full_records.update_values('A1', [['hello', 'hi', 'yay']])
+
+
+
 
 def start_up():	
 	with open('records.json', 'r') as json_file:

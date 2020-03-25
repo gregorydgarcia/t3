@@ -2,7 +2,8 @@
 .DS_Store
 
 # t3 Specific
-tmp
+creds/
+.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
