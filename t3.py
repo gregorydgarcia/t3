@@ -3,107 +3,72 @@ GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1LKX_c0fnDTJo9VFYFXkx
 import json
 import datetime
 import csv
+import math
 import pygsheets
 
 gc = pygsheets.authorize(service_file='creds/creds.json')
 sh = gc.open_by_url(GOOGLE_SHEET_URL)
 summary_record = sh[0]
-full_records = sh[1]
+running_records = sh[1]
 
-full_records.update_values('A1', [['hello', 'hi', 'yay']])
-
-
-
-
-def start_up():	
-	with open('records.json', 'r') as json_file:
-		data = json.load(json_file)
-		data["today"] = str(datetime.date.today())	
-		if data["today"] not in data['records'].keys():
-			data['records'][data["today"]] = []
-		
-	with open('records.json', 'w') as json_file:		
-		json.dump(data, json_file)
-
-
-	input_manager(data)	
-
-
-
-
-def input_manager(data):
+def input_manager():
 	command = input(': ') 
+	start_record(command)
+
+	command = input(': ')
 	while command != 'done':
 		if command == 'stop':
-			save_record(data)
-			print('time is not being tracked')	
-		elif command == 'output':
-			save_record(data)
-			package_results()
-			print('time is not being tracked')
-			input_manager(data)
+			end_record()
+			print('timer stopped. start new record to cont.')	
+			command = input(': ')					
 		else:
-			save_record(data)
-			start_record(command, data)
-		command = input(': ') 
+			end_record()
+			start_record(command)
+			command = input(': ') 
 
-	save_record(data)
+	end_record()
+	summarize_day()
 	print('closing t3')
 	return 
-
-def save_record(data):
-	r = data['active_record']
 	
-	if len(r) != 0: 
-		start = datetime.datetime.strptime(r[2], "%Y-%m-%d %H:%M:%S.%f")
-		end = datetime.datetime.now()	
-		minutes = round((end - start).seconds / 60)		
+def start_record(command): 
+	client = command.split(',')[0].strip()
+	desc = command.split(',')[1].strip()
+	start = str(datetime.datetime.now())
+	new_record = [start,'','',client,desc]
+	running_records.insert_rows(1, number=1, values=new_record, inherit=False)
 
-		data['records'][data['today']].append([r[0], r[1], minutes])
-		data['active_record'] = []
-	
-		with open('records.json', 'w') as json_file:		
-			json.dump(data, json_file)
 
-def start_record(command, data): 
-	command_arr = command.split(',')		
-	client = command_arr[0]
-	comment = ''
-	if len(command_arr) == 2:		
-		comment = command_arr[1]		
-	start_time = str(datetime.datetime.now())
+def end_record():
+	row = running_records.get_row(2, returnas='matrix', include_tailing_empty=False)
+	start = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+	end = datetime.datetime.now()	
+	minutes = math.ceil((end - start).seconds / 60)	
+	complete_record = [row[0], str(end), minutes, row[3], row[4]]
+	running_records.update_row(2, complete_record, col_offset=0)
 
-	data['active_record'] = [client, comment, start_time]
 
-	with open('records.json', 'w') as json_file:		
-			json.dump(data, json_file)
+def summarize_day():
+	all_reccords = running_records.get_all_records(head=1, majdim='ROWS', numericise_data=True)
 
-def package_results():
-	with open('records.json', 'r') as json_file:
-		data = json.load(json_file)
-		today = data['today']
-		todays_records = data['records'][today]
-		record_grouping = {}
-		for record in todays_records:
-			client = record[0]
-			length = record[2]
-			comment_row = record[1] + ' (' + str(length) + ')'
-			if client in record_grouping.keys():
-				total_length = record_grouping[client][0]
-				total_comments = record_grouping[client][1]			
-				total_length = total_length + length
-				total_comments = total_comments + ' ' + comment_row
-				record_grouping[client] = [total_length, total_comments]
+	summary = {}
+	for record in all_reccords:
+		today = str(datetime.datetime.now()).split(' ')[0]
+		if record['Start Time'].split(' ')[0] ==  today:
+			formatter = [record['Length (Minutes)'],record['Description']]
+			if record['Client'] in summary.keys(): 
+				summary[record['Client']].append(formatter)
 			else:
-				record_grouping[client] = [length, comment_row]	
+				summary[record['Client']] = [formatter]
+	
+	for client in summary.keys():
+		time_total = 0
+		desc_total = ''
+		for record in summary[client]:
+			time_total = time_total + record[0]
+			desc_total = desc_total + '- ' +record[1] + ' (' + str(record[0]) + ')\n '
+		
+		record = [today, client, time_total, desc_total.rstrip('\n ')]
+		summary_record.insert_rows(1, number=1, values=record, inherit=False)
 
-		time = str(datetime.datetime.now())
-		filename = 'timesheets/timesheet_' + time + '.csv'
-		with open(filename, 'w') as f:
-			headers = 'total tracked time (in minutes),client,comments (invidual events time)\n'
-			f.write(headers)
-			for key in record_grouping.keys():
-				f.write(str(record_grouping[key][0]) + ',' + key + "," + record_grouping[key][1] + '\n')
-		print('timesheet saved at timesheets/' + filename)
-
-start_up()
+input_manager()
